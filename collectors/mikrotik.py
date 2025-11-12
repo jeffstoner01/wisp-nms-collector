@@ -135,6 +135,8 @@ class MikroTikCollector:
     
     def collect_metrics(self) -> Dict[str, Any]:
         """Collect device metrics"""
+        from .metrics_collector import MetricsCollector
+        
         metrics = {}
         
         # CPU usage
@@ -175,10 +177,24 @@ class MikroTikCollector:
             except:
                 pass
         
-        # Interface statistics
-        interface_stats = self.collect_interface_stats()
-        if interface_stats:
-            metrics.update(interface_stats)
+        # Collect comprehensive metrics (throughput, signal, wireless, etc.)
+        try:
+            metrics_collector = MetricsCollector(self.ip, self.community, 'mikrotik')
+            comprehensive = metrics_collector.collect_all_metrics()
+            
+            # Add latency
+            if comprehensive.get('latency'):
+                metrics['latency'] = comprehensive['latency']
+            
+            # Add wireless metrics
+            if comprehensive.get('wireless'):
+                metrics.update(comprehensive['wireless'])
+            
+            # Add interface metrics
+            if comprehensive.get('interfaces'):
+                metrics['interfaces'] = comprehensive['interfaces']
+        except Exception as e:
+            logger.error(f"Error collecting comprehensive metrics: {e}")
         
         return metrics
     

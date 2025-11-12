@@ -29,17 +29,28 @@ class UbiquitiCollector(SNMPCollector):
     
     def collect_metrics(self) -> Dict[str, Any]:
         """Collect device metrics including wireless stats"""
+        from .metrics_collector import MetricsCollector
+        
         metrics = super().collect_metrics()
         
-        # Collect wireless-specific metrics
-        signal = self.snmp_get(self.UBNT_OIDS['radioSignal'])
-        if signal:
-            try:
-                metrics['signalStrength'] = int(signal)
-            except:
-                pass
-        
-        # Add more Ubiquiti-specific metrics as needed
+        # Collect comprehensive metrics (throughput, signal, wireless, etc.)
+        try:
+            metrics_collector = MetricsCollector(self.ip, self.community, 'ubiquiti')
+            comprehensive = metrics_collector.collect_all_metrics()
+            
+            # Add latency
+            if comprehensive.get('latency'):
+                metrics['latency'] = comprehensive['latency']
+            
+            # Add wireless metrics
+            if comprehensive.get('wireless'):
+                metrics.update(comprehensive['wireless'])
+            
+            # Add interface metrics
+            if comprehensive.get('interfaces'):
+                metrics['interfaces'] = comprehensive['interfaces']
+        except Exception as e:
+            logger.error(f"Error collecting comprehensive metrics: {e}")
         
         return metrics
     
