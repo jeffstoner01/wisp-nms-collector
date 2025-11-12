@@ -40,6 +40,7 @@ class NMSCollector:
         self.session.headers.update({
             'Content-Type': 'application/json',
         })
+        self.discovered_devices = []  # Store discovered devices for collection
         
     def load_config(self, config_path: str) -> Dict[str, Any]:
         """Load configuration from YAML file"""
@@ -204,10 +205,14 @@ class NMSCollector:
         """Run a single collection cycle for all devices"""
         logger.info("Starting collection cycle")
         
-        devices = self.config.get('devices', [])
+        # Use discovered devices if available, otherwise fall back to config
+        devices = self.discovered_devices if self.discovered_devices else self.config.get('devices', [])
+        
         if not devices:
-            logger.warning("No devices configured")
+            logger.warning("No devices to collect from (run discovery first)")
             return
+        
+        logger.info(f"Collecting metrics from {len(devices)} devices")
         
         all_devices = []
         all_metrics = []
@@ -281,10 +286,16 @@ class NMSCollector:
         
         if discovered_devices:
             logger.info(f"Discovered {len(discovered_devices)} devices, submitting to NMS...")
-            # Convert discovered devices to device format
-            devices = []
+            
+            # Convert discovered devices to two formats:
+            # 1. For NMS submission (simple format)
+            devices_for_nms = []
+            # 2. For collection (full config format with SNMP community)
+            devices_for_collection = []
+            
             for dev in discovered_devices:
-                devices.append({
+                # Format for NMS
+                devices_for_nms.append({
                     'deviceId': dev['deviceId'],
                     'name': dev['name'],
                     'ip': dev['ip'],
@@ -293,10 +304,22 @@ class NMSCollector:
                     'status': 'online',
                     'firmwareVersion': dev.get('sysDescr', '')
                 })
+                
+                # Format for collection (compatible with collect_from_device)
+                devices_for_collection.append({
+                    'ip': dev['ip'],
+                    'community': community,
+                    'vendor': dev['vendor'],
+                    'type': dev['deviceType'],
+                    'name': dev['name'],
+                    'deviceId': dev['deviceId']
+                })
             
-            self.submit_devices(devices)
+            self.submit_devices(devices_for_nms)
+            logger.info(f"✅ {len(devices_for_collection)} devices ready for metrics collection")
+            return devices_for_collection
         
-        return discovered_devices
+        return []
     
     def run(self):
         """Run the collector agent"""
@@ -307,7 +330,7 @@ class NMSCollector:
         self.send_heartbeat()
         
         # Run initial discovery if enabled
-        discovered = self.run_discovery()
+        self.discovered_devices = self.run_discovery()
         
         # Get settings
         interval = self.config.get('collector', {}).get('interval', 60)
@@ -331,7 +354,7 @@ class NMSCollector:
                 if discovery_config.get('enabled', False):
                     if time.time() - last_discovery >= scan_interval:
                         logger.info("Running periodic network discovery...")
-                        self.run_discovery()
+                        self.discovered_devices = self.run_discovery()
                         last_discovery = time.time()
                 
                 # Wait for next cycle
