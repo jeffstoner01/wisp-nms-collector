@@ -164,6 +164,7 @@ class NetworkScanner:
     def check_snmp(self, ip: str) -> Optional[Dict]:
         """
         Check if IP responds to SNMP and get device info
+        Tries SNMPv2c first, falls back to SNMPv1 if needed
         
         Args:
             ip: IP address to check
@@ -171,12 +172,32 @@ class NetworkScanner:
         Returns:
             Device info dict if SNMP responds, None otherwise
         """
+        # Try SNMPv2c first
+        result = self._try_snmp_version(ip, 1)  # v2c = mpModel 1
+        if result:
+            return result
+        
+        # Fall back to SNMPv1
+        result = self._try_snmp_version(ip, 0)  # v1 = mpModel 0
+        return result
+    
+    def _try_snmp_version(self, ip: str, mp_model: int) -> Optional[Dict]:
+        """
+        Try SNMP query with specific version
+        
+        Args:
+            ip: IP address to check
+            mp_model: 0 for SNMPv1, 1 for SNMPv2c
+        
+        Returns:
+            Device info dict if successful, None otherwise
+        """
         try:
             # Query sysDescr OID to identify device
             errorIndication, errorStatus, errorIndex, varBinds = next(
                 getCmd(
                     SnmpEngine(),
-                    CommunityData(self.community),
+                    CommunityData(self.community, mpModel=mp_model),
                     UdpTransportTarget((ip, 161), timeout=3, retries=2),
                     ContextData(),
                     ObjectType(ObjectIdentity('1.3.6.1.2.1.1.1.0'))  # sysDescr
@@ -199,7 +220,7 @@ class NetworkScanner:
                 errorIndication, errorStatus, errorIndex, varBinds_name = next(
                     getCmd(
                         SnmpEngine(),
-                        CommunityData(self.community),
+                        CommunityData(self.community, mpModel=mp_model),
                         UdpTransportTarget((ip, 161), timeout=3, retries=2),
                         ContextData(),
                         ObjectType(ObjectIdentity('1.3.6.1.2.1.1.5.0'))  # sysName
