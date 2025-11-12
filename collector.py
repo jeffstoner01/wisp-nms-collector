@@ -61,13 +61,9 @@ class NMSCollector:
             response = self.session.post(
                 f"{self.api_url}/api/trpc/collector.heartbeat",
                 json={
-                    "0": {
-                        "json": {
-                            "apiKey": self.api_key,
-                            "version": "1.0.0",
-                            "ipAddress": self.get_local_ip()
-                        }
-                    }
+                    "apiKey": self.api_key,
+                    "version": "1.0.0",
+                    "ipAddress": self.get_local_ip()
                 },
                 timeout=10
             )
@@ -100,12 +96,8 @@ class NMSCollector:
             response = self.session.post(
                 f"{self.api_url}/api/trpc/collector.submitDevices",
                 json={
-                    "0": {
-                        "json": {
-                            "apiKey": self.api_key,
-                            "devices": devices
-                        }
-                    }
+                    "apiKey": self.api_key,
+                    "devices": devices
                 },
                 timeout=30
             )
@@ -126,12 +118,8 @@ class NMSCollector:
             response = self.session.post(
                 f"{self.api_url}/api/trpc/collector.submitMetrics",
                 json={
-                    "0": {
-                        "json": {
-                            "apiKey": self.api_key,
-                            "metrics": metrics
-                        }
-                    }
+                    "apiKey": self.api_key,
+                    "metrics": metrics
                 },
                 timeout=30
             )
@@ -152,12 +140,8 @@ class NMSCollector:
             response = self.session.post(
                 f"{self.api_url}/api/trpc/collector.submitSnmpData",
                 json={
-                    "0": {
-                        "json": {
-                            "apiKey": self.api_key,
-                            "data": snmp_data
-                        }
-                    }
+                    "apiKey": self.api_key,
+                    "data": snmp_data
                 },
                 timeout=30
             )
@@ -178,12 +162,8 @@ class NMSCollector:
             response = self.session.post(
                 f"{self.api_url}/api/trpc/collector.submitLogs",
                 json={
-                    "0": {
-                        "json": {
-                            "apiKey": self.api_key,
-                            "logs": logs
-                        }
-                    }
+                    "apiKey": self.api_key,
+                    "logs": logs
                 },
                 timeout=30
             )
