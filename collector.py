@@ -316,7 +316,8 @@ class NMSCollector:
                     'vendor': dev['vendor'],
                     'type': dev['deviceType'],
                     'name': dev['name'],
-                    'deviceId': dev['deviceId']
+                    'deviceId': dev['deviceId'],
+                    'snmpVersion': dev.get('snmpVersion', '2c')  # Use detected version or default to 2c
                 })
             
             self.submit_devices(devices_for_nms)
