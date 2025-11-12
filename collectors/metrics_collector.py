@@ -47,19 +47,25 @@ class MetricsCollector:
     UBNT_RADIO_AIRTIME = '1.3.6.1.4.1.41112.1.4.5.1.14'  # ubntRadioAirtime
     UBNT_STATION_COUNT = '1.3.6.1.4.1.41112.1.4.7.1.1'  # ubntStaCount
     
-    def __init__(self, ip: str, community: str = 'public', vendor: str = 'generic'):
+    def __init__(self, ip: str, community: str = 'public', vendor: str = 'generic', snmp_version: str = '2c'):
         """Initialize metrics collector"""
         self.ip = ip
         self.community = community
         self.vendor = vendor.lower()
+        self.snmp_version = snmp_version  # Store preferred SNMP version
         self.previous_counters = {}
         
-    def snmp_get(self, oid: str, version: int = 2) -> Optional[str]:
+    def snmp_get(self, oid: str, version: Optional[int] = None) -> Optional[str]:
         """Execute SNMP GET using CLI tools"""
+        # Use device's preferred version if not specified
+        if version is None:
+            version = 1 if self.snmp_version == '1' else 2
+        
         try:
+            version_str = f'{version}c' if version == 2 else '1'
             cmd = [
                 'snmpget',
-                '-v', f'{version}c',
+                '-v', version_str,
                 '-c', self.community,
                 '-t', '3',
                 '-r', '2',
@@ -70,20 +76,25 @@ class MetricsCollector:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 return result.stdout.strip()
-            # Try SNMPv1 fallback
+            # Try SNMPv1 fallback only if we started with v2
             if version == 2:
                 return self.snmp_get(oid, version=1)
         except Exception as e:
             logger.debug(f"SNMP GET error for {self.ip} {oid}: {e}")
         return None
     
-    def snmp_walk(self, oid: str, version: int = 2) -> List[tuple]:
+    def snmp_walk(self, oid: str, version: Optional[int] = None) -> List[tuple]:
         """Execute SNMP WALK using CLI tools"""
+        # Use device's preferred version if not specified
+        if version is None:
+            version = 1 if self.snmp_version == '1' else 2
+        
         results = []
         try:
+            version_str = f'{version}c' if version == 2 else '1'
             cmd = [
                 'snmpwalk',
-                '-v', f'{version}c',
+                '-v', version_str,
                 '-c', self.community,
                 '-t', '3',
                 '-r', '2',

@@ -42,13 +42,16 @@ class MikroTikCollector:
         # Read community from top-level or nested snmp config
         self.community = device_config.get('community') or device_config.get('snmp', {}).get('community', 'public')
         self.port = device_config.get('port', 161)
+        # Read SNMP version (default to v2c)
+        snmp_version = device_config.get('snmpVersion', '2c')
+        self.snmp_mp_model = 0 if snmp_version == '1' else 1  # 0=SNMPv1, 1=SNMPv2c
         
     async def _snmp_get_async(self, oid: str) -> Optional[str]:
         """Async SNMP GET request"""
         try:
             errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
                 SnmpEngine(),
-                CommunityData(self.community),
+                CommunityData(self.community, mpModel=self.snmp_mp_model),
                 UdpTransportTarget((self.ip, self.port), timeout=5, retries=1),
                 ContextData(),
                 ObjectType(ObjectIdentity(oid))
@@ -81,7 +84,7 @@ class MikroTikCollector:
         try:
             async for errorIndication, errorStatus, errorIndex, varBinds in walkCmd(
                 SnmpEngine(),
-                CommunityData(self.community),
+                CommunityData(self.community, mpModel=self.snmp_mp_model),
                 UdpTransportTarget((self.ip, self.port), timeout=5, retries=1),
                 ContextData(),
                 ObjectType(ObjectIdentity(oid)),

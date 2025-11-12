@@ -174,9 +174,11 @@ class NetworkScanner:
             Device info dict if SNMP responds, None otherwise
         """
         # Try SNMPv2c first
+        snmp_version = '2c'
         result = self._snmp_get(ip, '1.3.6.1.2.1.1.1.0', version='2c')
         if not result:
             # Fall back to SNMPv1
+            snmp_version = '1'
             result = self._snmp_get(ip, '1.3.6.1.2.1.1.1.0', version='1')
         
         if not result:
@@ -184,11 +186,8 @@ class NetworkScanner:
         
         sys_descr = result
         
-        # Get sysName
-        sys_name_result = self._snmp_get(ip, '1.3.6.1.2.1.1.5.0', version='2c')
-        if not sys_name_result:
-            sys_name_result = self._snmp_get(ip, '1.3.6.1.2.1.1.5.0', version='1')
-        
+        # Get sysName using the same version that worked
+        sys_name_result = self._snmp_get(ip, '1.3.6.1.2.1.1.5.0', version=snmp_version)
         sys_name = sys_name_result if sys_name_result else ip
         
         # Identify vendor from sysDescr
@@ -202,7 +201,8 @@ class NetworkScanner:
             'deviceType': device_type,
             'sysDescr': sys_descr,
             'deviceId': f"{vendor}-{ip.replace('.', '-')}",
-            'status': 'online'
+            'status': 'online',
+            'snmpVersion': snmp_version  # Store which version worked
         }
         
         logger.info(f"✅ Discovered {vendor} device at {ip}: {sys_name}")

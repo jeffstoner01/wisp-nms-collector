@@ -35,7 +35,8 @@ class UbiquitiCollector(SNMPCollector):
         
         # Collect comprehensive metrics (throughput, signal, wireless, etc.)
         try:
-            metrics_collector = MetricsCollector(self.ip, self.community, 'ubiquiti')
+            snmp_version = self.config.get('snmpVersion', '2c')
+            metrics_collector = MetricsCollector(self.ip, self.community, 'ubiquiti', snmp_version)
             comprehensive = metrics_collector.collect_all_metrics()
             
             # Add latency
