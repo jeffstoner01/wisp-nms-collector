@@ -1,0 +1,50 @@
+# WISP NMS Collector Agent Configuration
+# Production configuration for BlueRidgeNet
+
+nms:
+  # URL of your NMS web application
+  url: "https://3000-iw4vyw53broems89l0olb-8398bdae.manusvm.computer"
+  
+  # API key for authentication
+  api_key: "_VUQCq3jp8wztL_mj24OKKqMTiEXW8EoWLeov2fGMVs"
+
+collector:
+  # Collection interval in seconds
+  interval: 60
+  
+  # Maximum number of devices to poll concurrently
+  max_workers: 20
+
+# Network discovery settings
+discovery:
+  # Enable automatic network scanning
+  enabled: true
+  
+  # Subnets to scan for SNMP devices
+  # You can specify multiple subnets or IP ranges
+  subnets:
+    - "10.0.0.0/8"  # Your entire 10.x network
+    # Or specify smaller ranges for faster scanning:
+    # - "10.0.0.0/16"
+    # - "10.1.0.0/16"
+    # - "10.2.0.0/16"
+  
+  # SNMP community string for discovery
+  snmp_community: "BlueRidgeNet"
+  
+  # Discovery scan interval (in seconds)
+  # How often to scan for new devices
+  scan_interval: 3600  # 1 hour
+  
+  # Concurrent discovery threads
+  discovery_threads: 50
+
+# Manual device list (optional - used if discovery is disabled)
+# Leave empty to rely on automatic discovery
+devices: []
+
+# Default SNMP settings for all devices
+default_snmp:
+  community: "BlueRidgeNet"
+  version: "2c"
+  port: 161

@@ -1,0 +1,55 @@
+# WISP NMS Collector Agent Configuration
+# Configuration for 10.0.0.0/8 network
+
+nms:
+  # URL of your NMS web application
+  url: "https://3000-iw4vyw53broems89l0olb-8398bdae.manusvm.computer"
+  
+  # API key for authentication
+  api_key: "_VUQCq3jp8wztL_mj24OKKqMTiEXW8EoWLeov2fGMVs"
+
+collector:
+  # Collection interval in seconds
+  interval: 60
+  
+  # Maximum number of devices to poll concurrently
+  max_workers: 10
+
+# List of devices to monitor
+# Add your actual device IPs below
+devices:
+  # Example MikroTik Router
+  - name: "Main Router"
+    ip: "10.0.0.1"  # Change to your actual router IP
+    vendor: "mikrotik"
+    type: "router"
+    deviceId: "main-router"
+    snmp:
+      community: "public"  # Change if you use a different community string
+      version: "2c"
+      port: 161
+  
+  # Example MikroTik Access Point
+  - name: "Tower AP 1"
+    ip: "10.0.1.1"  # Change to your actual AP IP
+    vendor: "mikrotik"
+    type: "ap"
+    deviceId: "tower-ap-1"
+    snmp:
+      community: "public"
+      version: "2c"
+      port: 161
+  
+  # Example CPE
+  - name: "Customer CPE Example"
+    ip: "10.0.100.50"  # Change to your actual CPE IP
+    vendor: "ubiquiti"
+    type: "cpe"
+    deviceId: "cpe-001"
+    family: "LTU"
+    snmp:
+      community: "public"
+      version: "2c"
+      port: 161
+
+# Add more devices as needed following the same format

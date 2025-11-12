@@ -1,0 +1,11 @@
+# WISP NMS Collector Agent Dependencies
+
+# Core dependencies
+requests>=2.31.0
+PyYAML>=6.0.1
+
+# SNMP support - pysnmp 7.x with async support
+pysnmp>=7.0.0
+
+# Optional: MikroTik RouterOS API support
+# routeros-api>=0.17.0
