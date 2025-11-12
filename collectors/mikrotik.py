@@ -8,9 +8,8 @@ import logging
 from typing import Dict, Any, List, Optional
 import time
 
-# pysnmp 7.x imports
-from pysnmp.hlapi.v3arch.asyncio import *
-import asyncio
+# pysnmp imports (synchronous API)
+from pysnmp.hlapi import *
 
 logger = logging.getLogger(__name__)
 
@@ -40,15 +39,17 @@ class MikroTikCollector:
         self.community = self.snmp_config.get('community', 'public')
         self.port = self.snmp_config.get('port', 161)
         
-    async def snmp_get_async(self, oid: str) -> Optional[str]:
-        """Perform async SNMP GET request"""
+    def snmp_get(self, oid: str) -> Optional[str]:
+        """Perform SNMP GET request"""
         try:
-            errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-                SnmpEngine(),
-                CommunityData(self.community),
-                await UdpTransportTarget.create((self.ip, self.port), timeout=5, retries=1),
-                ContextData(),
-                ObjectType(ObjectIdentity(oid))
+            errorIndication, errorStatus, errorIndex, varBinds = next(
+                getCmd(
+                    SnmpEngine(),
+                    CommunityData(self.community),
+                    UdpTransportTarget((self.ip, self.port), timeout=5, retries=1),
+                    ContextData(),
+                    ObjectType(ObjectIdentity(oid))
+                )
             )
             
             if errorIndication:
@@ -64,22 +65,14 @@ class MikroTikCollector:
             logger.error(f"SNMP exception for {self.ip}: {e}")
             return None
     
-    def snmp_get(self, oid: str) -> Optional[str]:
-        """Synchronous wrapper for SNMP GET"""
-        try:
-            return asyncio.run(self.snmp_get_async(oid))
-        except Exception as e:
-            logger.error(f"SNMP sync error for {self.ip}: {e}")
-            return None
-    
-    async def snmp_walk_async(self, oid: str) -> List[tuple]:
-        """Perform async SNMP WALK request"""
+    def snmp_walk(self, oid: str) -> List[tuple]:
+        """Perform SNMP WALK request"""
         results = []
         try:
-            async for errorIndication, errorStatus, errorIndex, varBinds in nextCmd(
+            for errorIndication, errorStatus, errorIndex, varBinds in nextCmd(
                 SnmpEngine(),
                 CommunityData(self.community),
-                await UdpTransportTarget.create((self.ip, self.port), timeout=5, retries=1),
+                UdpTransportTarget((self.ip, self.port), timeout=5, retries=1),
                 ContextData(),
                 ObjectType(ObjectIdentity(oid)),
                 lexicographicMode=False
@@ -92,14 +85,6 @@ class MikroTikCollector:
             logger.error(f"SNMP walk exception for {self.ip}: {e}")
         
         return results
-    
-    def snmp_walk(self, oid: str) -> List[tuple]:
-        """Synchronous wrapper for SNMP WALK"""
-        try:
-            return asyncio.run(self.snmp_walk_async(oid))
-        except Exception as e:
-            logger.error(f"SNMP walk sync error for {self.ip}: {e}")
-            return []
     
     def collect_device_info(self) -> Dict[str, Any]:
         """Collect basic device information"""
