@@ -6,6 +6,9 @@ import ipaddress
 import logging
 import subprocess
 import re
+import json
+import os
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Optional
 
@@ -13,10 +16,12 @@ logger = logging.getLogger(__name__)
 
 
 class NetworkScanner:
-    def __init__(self, community: str = "public", threads: int = 50):
+    def __init__(self, community: str = "public", threads: int = 50, cache_file: str = "device_cache.json"):
         self.community = community
         self.threads = threads
         self.discovered_devices = []
+        self.cache_file = cache_file
+        self.cache = self.load_cache()
     
     def scan_subnets(self, subnets: List[str]) -> List[Dict]:
         """
@@ -293,3 +298,77 @@ class NetworkScanner:
                 return 'ap'
             else:
                 return 'unknown'
+
+    def load_cache(self) -> Dict:
+        """Load device cache from file"""
+        if os.path.exists(self.cache_file):
+            try:
+                with open(self.cache_file, 'r') as f:
+                    cache = json.load(f)
+                logger.info(f"📦 Loaded {len(cache.get('devices', []))} devices from cache")
+                return cache
+            except Exception as e:
+                logger.warning(f"Failed to load cache: {e}")
+        return {'devices': [], 'last_full_scan': 0}
+    
+    def save_cache(self, devices: List[Dict]):
+        """Save discovered devices to cache"""
+        try:
+            cache_data = {
+                'devices': devices,
+                'last_full_scan': time.time()
+            }
+            with open(self.cache_file, 'w') as f:
+                json.dump(cache_data, f, indent=2)
+            logger.info(f"💾 Saved {len(devices)} devices to cache")
+        except Exception as e:
+            logger.error(f"Failed to save cache: {e}")
+    
+    def get_cached_ips(self) -> List[str]:
+        """Get list of IPs from cache"""
+        return [device['ip'] for device in self.cache.get('devices', [])]
+    
+    def should_do_full_scan(self, force_interval: int = 3600) -> bool:
+        """
+        Determine if a full scan should be performed
+        
+        Args:
+            force_interval: Seconds between full scans (default 1 hour)
+        
+        Returns:
+            True if full scan should be done
+        """
+        last_scan = self.cache.get('last_full_scan', 0)
+        time_since_scan = time.time() - last_scan
+        
+        # Do full scan if:
+        # 1. Never scanned before (last_scan == 0)
+        # 2. Enough time has passed since last full scan
+        if last_scan == 0:
+            logger.info("🔍 No previous scan found, performing full scan")
+            return True
+        elif time_since_scan >= force_interval:
+            logger.info(f"🔍 {int(time_since_scan)}s since last full scan, performing full scan")
+            return True
+        else:
+            logger.info(f"⚡ Using cached devices ({int(force_interval - time_since_scan)}s until next full scan)")
+            return False
+    
+    def quick_scan_cached_devices(self) -> List[Dict]:
+        """
+        Quickly scan only cached devices without full subnet scan
+        
+        Returns:
+            List of discovered devices
+        """
+        cached_ips = self.get_cached_ips()
+        
+        if not cached_ips:
+            logger.warning("No cached devices found, returning empty list")
+            return []
+        
+        logger.info(f"⚡ Quick scanning {len(cached_ips)} cached devices...")
+        devices = self.snmp_scan(cached_ips)
+        logger.info(f"✅ Quick scan complete: {len(devices)} devices responded")
+        
+        return devices

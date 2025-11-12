@@ -259,16 +259,25 @@ class NMSCollector:
         # Create scanner with SNMP community and thread count
         community = discovery_config.get('snmp_community', 'public')
         threads = discovery_config.get('discovery_threads', 50)
+        full_scan_interval = discovery_config.get('full_scan_interval', 3600)  # Default 1 hour
         scanner = NetworkScanner(community=community, threads=threads)
         
-        # Get subnets to scan
-        subnets = discovery_config.get('subnets', [])
-        if not subnets:
-            logger.warning("No subnets configured for discovery")
-            return []
-        
-        # Scan the subnets
-        discovered_devices = scanner.scan_subnets(subnets)
+        # Decide whether to do full scan or quick scan of cached devices
+        if scanner.should_do_full_scan(force_interval=full_scan_interval):
+            # Full scan of all subnets
+            subnets = discovery_config.get('subnets', [])
+            if not subnets:
+                logger.warning("No subnets configured for discovery")
+                return []
+            
+            discovered_devices = scanner.scan_subnets(subnets)
+            
+            # Save to cache for future quick scans
+            if discovered_devices:
+                scanner.save_cache(discovered_devices)
+        else:
+            # Quick scan of cached devices only
+            discovered_devices = scanner.quick_scan_cached_devices()
         
         if discovered_devices:
             logger.info(f"Discovered {len(discovered_devices)} devices, submitting to NMS...")
