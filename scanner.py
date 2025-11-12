@@ -101,7 +101,7 @@ class NetworkScanner:
                 
                 completed += 1
                 if completed % 1000 == 0:
-                    logger.info(f"Ping progress: {completed:,}/{len(ips):,} ({100*completed/len(ips):.1f}%)")
+                    logger.info(f"Ping progress: {completed:,}/{len(ips):,} ({100*completed/len(ips):.1f}%) - Found {len(live_ips)} live hosts")
         
         return live_ips
     
