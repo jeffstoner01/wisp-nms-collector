@@ -235,6 +235,9 @@ class NMSCollector:
                         if 'device' in result:
                             all_devices.append(result['device'])
                         if 'metrics' in result:
+                            # Add deviceIp to each metric
+                            for metric in result['metrics']:
+                                metric['deviceIp'] = device_config['ip']
                             all_metrics.extend(result['metrics'])
                         if 'snmp_data' in result:
                             all_snmp_data.extend(result['snmp_data'])
