@@ -194,6 +194,11 @@ class NetworkScanner:
         vendor = self.identify_vendor(sys_descr)
         device_type = self.identify_device_type(sys_descr, vendor)
         
+        # Detect device family for Ubiquiti devices
+        family = None
+        if vendor == 'ubiquiti':
+            family = self.identify_ubiquiti_family(ip, snmp_version)
+        
         device_info = {
             'ip': ip,
             'name': sys_name,
@@ -202,7 +207,8 @@ class NetworkScanner:
             'sysDescr': sys_descr,
             'deviceId': f"{vendor}-{ip.replace('.', '-')}",
             'status': 'online',
-            'snmpVersion': snmp_version  # Store which version worked
+            'snmpVersion': snmp_version,  # Store which version worked
+            'family': family  # Store device family (wave, airmax, etc.)
         }
         
         logger.info(f"✅ Discovered {vendor} device at {ip}: {sys_name}")
@@ -252,6 +258,23 @@ class NetworkScanner:
         except Exception as e:
             logger.debug(f"SNMP get failed for {ip} OID {oid}: {e}")
             return None
+    
+    def identify_ubiquiti_family(self, ip: str, snmp_version: str) -> Optional[str]:
+        """Identify Ubiquiti device family (wave, airmax, etc.)"""
+        # Check if device has airFiber/Wave MIB (1.3.6.1.4.1.41112.1.11.1.2.2.1)
+        wave_check = self._snmp_get(ip, '1.3.6.1.4.1.41112.1.11.1.2.2.1', version=snmp_version)
+        if wave_check and 'wave' in wave_check.lower():
+            logger.info(f"Detected Wave device at {ip}: {wave_check}")
+            return 'wave'
+        
+        # Check if device has airMAX MIB (1.3.6.1.4.1.41112.1.4.1.1.3.1)
+        airmax_check = self._snmp_get(ip, '1.3.6.1.4.1.41112.1.4.1.1.3.1', version=snmp_version)
+        if airmax_check:
+            logger.info(f"Detected airMAX device at {ip}")
+            return 'airmax'
+        
+        # Default to airmax if we can't determine
+        return 'airmax'
     
     def identify_vendor(self, sys_descr: str) -> str:
         """Identify device vendor from sysDescr"""

@@ -190,8 +190,13 @@ class NMSCollector:
                 from collectors.mikrotik import MikroTikCollector
                 collector = MikroTikCollector(device_config)
             elif device_config.get('vendor') == 'ubiquiti':
-                from collectors.ubiquiti import UbiquitiCollector
-                collector = UbiquitiCollector(device_config)
+                # Check if it's a Wave device
+                if device_config.get('family') == 'wave':
+                    from collectors.ubiquiti_wave import UbiquitiWaveCollector
+                    collector = UbiquitiWaveCollector(device_config)
+                else:
+                    from collectors.ubiquiti import UbiquitiCollector
+                    collector = UbiquitiCollector(device_config)
             else:
                 from collectors.snmp import SNMPCollector
                 collector = SNMPCollector(device_config)
@@ -317,7 +322,8 @@ class NMSCollector:
                     'type': dev['deviceType'],
                     'name': dev['name'],
                     'deviceId': dev['deviceId'],
-                    'snmpVersion': dev.get('snmpVersion', '2c')  # Use detected version or default to 2c
+                    'snmpVersion': dev.get('snmpVersion', '2c'),  # Use detected version or default to 2c
+                    'family': dev.get('family')  # Device family (wave, airmax, etc.)
                 })
             
             self.submit_devices(devices_for_nms)
