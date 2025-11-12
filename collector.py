@@ -59,7 +59,7 @@ class NMSCollector:
         """Send heartbeat to NMS"""
         try:
             response = self.session.post(
-                f"{self.api_url}/api/trpc/collector.heartbeat",
+                f"{self.api_url}/api/collector/heartbeat",
                 json={
                     "apiKey": self.api_key,
                     "version": "1.0.0",
@@ -94,7 +94,7 @@ class NMSCollector:
             
         try:
             response = self.session.post(
-                f"{self.api_url}/api/trpc/collector.submitDevices",
+                f"{self.api_url}/api/collector/devices",
                 json={
                     "apiKey": self.api_key,
                     "devices": devices
@@ -116,7 +116,7 @@ class NMSCollector:
             
         try:
             response = self.session.post(
-                f"{self.api_url}/api/trpc/collector.submitMetrics",
+                f"{self.api_url}/api/collector/metrics",
                 json={
                     "apiKey": self.api_key,
                     "metrics": metrics
@@ -138,7 +138,7 @@ class NMSCollector:
             
         try:
             response = self.session.post(
-                f"{self.api_url}/api/trpc/collector.submitSnmpData",
+                f"{self.api_url}/api/collector/snmp",
                 json={
                     "apiKey": self.api_key,
                     "data": snmp_data
@@ -160,7 +160,7 @@ class NMSCollector:
             
         try:
             response = self.session.post(
-                f"{self.api_url}/api/trpc/collector.submitLogs",
+                f"{self.api_url}/api/collector/logs",
                 json={
                     "apiKey": self.api_key,
                     "logs": logs
