@@ -18,7 +18,7 @@ from scanner import NetworkScanner
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # Changed to DEBUG to see debug messages
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('collector.log'),
@@ -182,6 +182,7 @@ class NMSCollector:
         device_type = device_config.get('type', 'router')
         
         logger.info(f"Collecting data from {device_ip} ({device_type})")
+        logger.debug(f"Device config for {device_ip}: community={device_config.get('community', 'NOT SET')}, snmpVersion={device_config.get('snmpVersion', 'NOT SET')}, vendor={device_config.get('vendor', 'unknown')}")
         
         try:
             # Import device-specific collectors
