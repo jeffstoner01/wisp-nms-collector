@@ -1,17 +1,13 @@
 """
-Network scanner for SNMP device discovery
+Network scanner for SNMP device discovery using CLI tools
 """
 
-import asyncio
 import ipaddress
 import logging
 import subprocess
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Optional
-from pysnmp.hlapi import (
-    getCmd, SnmpEngine, CommunityData, UdpTransportTarget,
-    ContextData, ObjectType, ObjectIdentity
-)
 
 logger = logging.getLogger(__name__)
 
@@ -173,83 +169,83 @@ class NetworkScanner:
             Device info dict if SNMP responds, None otherwise
         """
         # Try SNMPv2c first
-        result = self._try_snmp_version(ip, 1)  # v2c = mpModel 1
-        if result:
-            return result
+        result = self._snmp_get(ip, '1.3.6.1.2.1.1.1.0', version='2c')
+        if not result:
+            # Fall back to SNMPv1
+            result = self._snmp_get(ip, '1.3.6.1.2.1.1.1.0', version='1')
         
-        # Fall back to SNMPv1
-        result = self._try_snmp_version(ip, 0)  # v1 = mpModel 0
-        return result
+        if not result:
+            return None
+        
+        sys_descr = result
+        
+        # Get sysName
+        sys_name_result = self._snmp_get(ip, '1.3.6.1.2.1.1.5.0', version='2c')
+        if not sys_name_result:
+            sys_name_result = self._snmp_get(ip, '1.3.6.1.2.1.1.5.0', version='1')
+        
+        sys_name = sys_name_result if sys_name_result else ip
+        
+        # Identify vendor from sysDescr
+        vendor = self.identify_vendor(sys_descr)
+        device_type = self.identify_device_type(sys_descr, vendor)
+        
+        device_info = {
+            'ip': ip,
+            'name': sys_name,
+            'vendor': vendor,
+            'deviceType': device_type,
+            'sysDescr': sys_descr,
+            'deviceId': f"{vendor}-{ip.replace('.', '-')}",
+            'status': 'online'
+        }
+        
+        logger.info(f"✅ Discovered {vendor} device at {ip}: {sys_name}")
+        return device_info
     
-    def _try_snmp_version(self, ip: str, mp_model: int) -> Optional[Dict]:
+    def _snmp_get(self, ip: str, oid: str, version: str = '2c') -> Optional[str]:
         """
-        Try SNMP query with specific version
+        Execute snmpget command to retrieve a single OID value
         
         Args:
-            ip: IP address to check
-            mp_model: 0 for SNMPv1, 1 for SNMPv2c
+            ip: IP address to query
+            oid: SNMP OID to retrieve
+            version: SNMP version ('1' or '2c')
         
         Returns:
-            Device info dict if successful, None otherwise
+            OID value as string, or None if failed
         """
         try:
-            # Query sysDescr OID to identify device
-            errorIndication, errorStatus, errorIndex, varBinds = next(
-                getCmd(
-                    SnmpEngine(),
-                    CommunityData(self.community, mpModel=mp_model),
-                    UdpTransportTarget((ip, 161), timeout=3, retries=2),
-                    ContextData(),
-                    ObjectType(ObjectIdentity('1.3.6.1.2.1.1.1.0'))  # sysDescr
-                )
+            cmd = [
+                'snmpget',
+                '-v', version,
+                '-c', self.community,
+                '-t', '3',  # 3 second timeout
+                '-r', '2',  # 2 retries
+                '-Oqv',     # Output: quick, value only
+                ip,
+                oid
+            ]
+            
+            result = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
+                text=True
             )
             
-            if errorIndication:
-                logger.debug(f"SNMP error for {ip}: {errorIndication}")
-                return None
+            if result.returncode == 0 and result.stdout.strip():
+                # Clean up the output
+                value = result.stdout.strip()
+                # Remove quotes if present
+                value = value.strip('"').strip("'")
+                return value
             
-            if errorStatus:
-                logger.debug(f"SNMP error for {ip}: {errorStatus.prettyPrint()}")
-                return None
-            
-            # Device responded to SNMP!
-            sys_descr = str(varBinds[0][1])
-            
-            # Get sysName
-            try:
-                errorIndication, errorStatus, errorIndex, varBinds_name = next(
-                    getCmd(
-                        SnmpEngine(),
-                        CommunityData(self.community, mpModel=mp_model),
-                        UdpTransportTarget((ip, 161), timeout=3, retries=2),
-                        ContextData(),
-                        ObjectType(ObjectIdentity('1.3.6.1.2.1.1.5.0'))  # sysName
-                    )
-                )
-                
-                sys_name = str(varBinds_name[0][1]) if not errorIndication and not errorStatus else ip
-            except Exception:
-                sys_name = ip
-            
-            # Identify vendor from sysDescr
-            vendor = self.identify_vendor(sys_descr)
-            device_type = self.identify_device_type(sys_descr, vendor)
-            
-            device_info = {
-                'ip': ip,
-                'name': sys_name,
-                'vendor': vendor,
-                'deviceType': device_type,
-                'sysDescr': sys_descr,
-                'deviceId': f"{vendor}-{ip.replace('.', '-')}",
-                'status': 'online'
-            }
-            
-            logger.info(f"✅ Discovered {vendor} device at {ip}: {sys_name}")
-            return device_info
+            return None
             
         except Exception as e:
-            logger.debug(f"SNMP check failed for {ip}: {e}")
+            logger.debug(f"SNMP get failed for {ip} OID {oid}: {e}")
             return None
     
     def identify_vendor(self, sys_descr: str) -> str:
