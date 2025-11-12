@@ -255,8 +255,20 @@ class NMSCollector:
             return []
         
         logger.info("🔍 Starting network discovery...")
-        scanner = NetworkScanner(self.config)
-        discovered_devices = scanner.discover_devices()
+        
+        # Create scanner with SNMP community and thread count
+        community = discovery_config.get('snmp_community', 'public')
+        threads = discovery_config.get('discovery_threads', 50)
+        scanner = NetworkScanner(community=community, threads=threads)
+        
+        # Get subnets to scan
+        subnets = discovery_config.get('subnets', [])
+        if not subnets:
+            logger.warning("No subnets configured for discovery")
+            return []
+        
+        # Scan the subnets
+        discovered_devices = scanner.scan_subnets(subnets)
         
         if discovered_devices:
             logger.info(f"Discovered {len(discovered_devices)} devices, submitting to NMS...")
