@@ -11,7 +11,7 @@ import asyncio
 
 # pysnmp asyncio API
 from pysnmp.hlapi.asyncio import (
-    getCmd, bulkCmd, SnmpEngine, CommunityData, 
+    getCmd, walkCmd, SnmpEngine, CommunityData, 
     UdpTransportTarget, ContextData, ObjectType, ObjectIdentity
 )
 
@@ -76,20 +76,17 @@ class MikroTikCollector:
             return None
     
     async def _snmp_walk_async(self, oid: str) -> List[tuple]:
-        """Async SNMP WALK request using bulkCmd"""
+        """Async SNMP WALK request using walkCmd"""
         results = []
         try:
-            iterator = bulkCmd(
+            async for errorIndication, errorStatus, errorIndex, varBinds in walkCmd(
                 SnmpEngine(),
                 CommunityData(self.community),
                 UdpTransportTarget((self.ip, self.port), timeout=5, retries=1),
                 ContextData(),
-                0, 25,  # nonRepeaters=0, maxRepetitions=25
                 ObjectType(ObjectIdentity(oid)),
                 lexicographicMode=False
-            )
-            
-            async for errorIndication, errorStatus, errorIndex, varBinds in iterator:
+            ):
                 if errorIndication or errorStatus:
                     break
                 for varBind in varBinds:
