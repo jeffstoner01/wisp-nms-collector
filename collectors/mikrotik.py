@@ -39,9 +39,9 @@ class MikroTikCollector:
         self.config = device_config
         self.ip = device_config['ip']
         self.device_id = device_config.get('deviceId', self.ip)
-        self.snmp_config = device_config.get('snmp', {})
-        self.community = self.snmp_config.get('community', 'public')
-        self.port = self.snmp_config.get('port', 161)
+        # Read community from top-level or nested snmp config
+        self.community = device_config.get('community') or device_config.get('snmp', {}).get('community', 'public')
+        self.port = device_config.get('port', 161)
         
     async def _snmp_get_async(self, oid: str) -> Optional[str]:
         """Async SNMP GET request"""
